@@ -182,13 +182,6 @@ async function run() {
       .db("PawspalacePetAdoptionDB")
       .collection("adoptedPets");
 
-    // app.get("/borrowedBooks", async (req, res) => {
-    //   const cursor = borrowedBooksCollection.find();
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
-
-    // GET SOME DATA (CONDITIONAL) USING QUERY
     app.get("/adoptedPets", async (req, res) => {
       let query = {};
 
@@ -203,6 +196,52 @@ async function run() {
       const adoptedPets = req.body;
       console.log(adoptedPets);
       const result = await adoptedPetsCollection.insertOne(adoptedPets);
+      res.send(result);
+    });
+
+    // added pets related apis
+    app.get("/addedPets", async (req, res) => {
+      const result = await petCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/addedPets/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await petCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.post("/addedPets", verifyToken, verifyAdmin, async (req, res) => {
+      const item = req.body;
+      const result = await petCollection.insertOne(item);
+      res.send(result);
+    });
+
+    app.patch("/addedPets/:id", async (req, res) => {
+      const pet = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          name: pet.name,
+          category: pet.category,
+          age: pet.age,
+          location: pet.location,
+          shortDescription: pet.short,
+          longDescription: pet.long,
+          image: item.image,
+        },
+      };
+
+      const result = await petCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.delete("/addedPets/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await petCollection.deleteOne(query);
       res.send(result);
     });
   } finally {
