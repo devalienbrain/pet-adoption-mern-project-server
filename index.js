@@ -150,32 +150,39 @@ async function run() {
     const petCollection = client
       .db("PawspalacePetAdoptionDB")
       .collection("allPets");
+
     app.get("/allPets", async (req, res) => {
-      const cursor = petCollection.find();
-      const result = await cursor.toArray();
+      console.log(req.query.email);
+
+      let query = {};
+
+      if (req.query?.email) {
+        query = { addedByUser: req.query.email };
+      }
+      const result = await petCollection.find(query).toArray();
       res.send(result);
     });
 
     // ALL PETS API FOR PAGINATION
-    app.get("/allPets", async (req, res) => {
-      const pets = req.query;
-      const page = parseInt(pets.page);
-      const size = parseInt(pets.size);
+    // app.get("/allPets", async (req, res) => {
+    //   const pets = req.query;
+    //   const page = parseInt(pets.page);
+    //   const size = parseInt(pets.size);
 
-      const cursor = petCollection
-        .find()
-        .skip(page * size)
-        .limit(size);
-      const result = await cursor.toArray();
-      res.send(result);
-    });
+    //   const cursor = petCollection
+    //     .find()
+    //     .skip(page * size)
+    //     .limit(size);
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
 
     // TOTAL PETS COUNT
-    app.get("/petsCount", async (req, res) => {
-      const count = await petCollection.estimatedDocumentCount();
-      console.log("Total Pets= ", count);
-      res.send({ count });
-    });
+    // app.get("/petsCount", async (req, res) => {
+    //   const count = await petCollection.estimatedDocumentCount();
+    //   console.log("Total Pets= ", count);
+    //   res.send({ count });
+    // });
 
     // ADOPTED PETS IN DB
     const adoptedPetsCollection = client
@@ -230,7 +237,7 @@ async function run() {
           location: pet.location,
           shortDescription: pet.short,
           longDescription: pet.long,
-          image: item.image,
+          image: pet.image,
         },
       };
 
@@ -242,6 +249,63 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await petCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    const donationCampaignCollection = client
+      .db("PawspalacePetAdoptionDB")
+      .collection("donationCampaigns");
+
+    // donation campaign related apis
+    app.get("/donation", async (req, res) => {
+      console.log(req.query.email);
+      let query = {};
+      if (req.query?.email) {
+        query = { addedByUser: req.query.email };
+      }
+      const result = await donationCampaignCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/donation/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationCampaignCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.post("/donation", verifyToken, async (req, res) => {
+      const item = req.body;
+      const result = await donationCampaignCollection.insertOne(item);
+      res.send(result);
+    });
+
+    app.patch("/donation/:id", async (req, res) => {
+      const donation = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          name: donation.campaignName,
+          amount: donation.maxAmount,
+          date: donation.lastDate,
+          shortDescription: donation.short,
+          longDescription: donation.long,
+          image: donation.image,
+        },
+      };
+
+      const result = await donationCampaignCollection.updateOne(
+        filter,
+        updatedDoc
+      );
+      res.send(result);
+    });
+
+    app.delete("/donation/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationCampaignCollection.deleteOne(query);
       res.send(result);
     });
   } finally {
