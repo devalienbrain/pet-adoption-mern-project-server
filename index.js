@@ -15,6 +15,14 @@ app.listen(port, () => {
 // MIDDLEWARE
 //To Send Token From Server Cross Origin Setup In Cors Middleware
 app.use(cors());
+cors({
+  origin: [
+    "http://localhost:5173",
+    "https://pawspalace-pet-adoption.web.app",
+    "https://pawspalace-pet-adoption.firebaseapp.com",
+  ],
+  credentials: true,
+});
 app.use(express.json());
 
 // MongoDB Starts Here
@@ -37,7 +45,7 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged. Successfully connected to MongoDB!");
 
     // JWT related api
