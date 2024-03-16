@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const jwt = require("jsonwebtoken");
+require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 app.get("/", (req, res) => {
@@ -18,16 +20,14 @@ app.use(cors());
 cors({
   origin: [
     "http://localhost:5173",
-    "https://pawspalace-pet-adoption.web.app",
-    "https://pawspalace-pet-adoption.firebaseapp.com",
+    // "https://pawspalace-pet-adoption.web.app",
+    // "https://pawspalace-pet-adoption.firebaseapp.com",
   ],
   credentials: true,
 });
 app.use(express.json());
 
 // MongoDB Starts Here
-
-require("dotenv").config();
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -192,6 +192,25 @@ async function run() {
     //   res.send({ count });
     // });
 
+    app.patch("/allpets/:id", async (req, res) => {
+      const pet = req.body;
+      const id = req.params.id;
+      console.log("pet", pet);
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          adoptedStatus: pet.adopted,
+          reqPersonName: pet.reqPersonName,
+          reqPersonAddress: pet.reqPersonAddress,
+          reqPersonEmail: pet.reqPersonEmail,
+          reqPersonPhone: pet.reqPersonPhone,
+        },
+      };
+
+      const result = await petCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
     // ADOPTED PETS IN DB
     const adoptedPetsCollection = client
       .db("PawspalacePetAdoptionDB")
@@ -267,11 +286,13 @@ async function run() {
     // donation campaign related apis
     app.get("/donation", async (req, res) => {
       console.log(req.query.email);
+
       let query = {};
+
       if (req.query?.email) {
         query = { addedByUser: req.query.email };
       }
-      const result = await donationCampaignCollection.find().toArray();
+      const result = await donationCampaignCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -315,6 +336,53 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await donationCampaignCollection.deleteOne(query);
       res.send(result);
+    });
+    // PAYMENT STRIPE
+    const paymentCollection = client
+      .db("PawspalacePetAdoptionDB")
+      .collection("payments");
+
+    // payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount, "amount inside the intent");
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.get("/payments/:email", verifyToken, async (req, res) => {
+      const query = { email: req.params.email };
+      if (req.params.email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment);
+
+      //  carefully delete each item from the cart
+      console.log("payment info", payment);
+      const query = {
+        _id: {
+          $in: payment.cartIds.map((id) => new ObjectId(id)),
+        },
+      };
+
+      const deleteResult = await cartCollection.deleteMany(query);
+
+      res.send({ paymentResult, deleteResult });
     });
   } finally {
     // Ensures that the client will close when you finish/error
