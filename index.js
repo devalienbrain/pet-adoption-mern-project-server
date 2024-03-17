@@ -20,8 +20,8 @@ app.use(cors());
 cors({
   origin: [
     "http://localhost:5173",
-    // "https://pawspalace-pet-adoption.web.app",
-    // "https://pawspalace-pet-adoption.firebaseapp.com",
+    "https://pawspalace-pet-adoption.web.app",
+    "https://pawspalace-pet-adoption.firebaseapp.com",
   ],
   credentials: true,
 });
